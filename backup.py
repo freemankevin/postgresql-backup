@@ -30,41 +30,21 @@ def setup_logging(backup_dir):
     return log_dir
 
 def compress_file(file_path):
-    with open(file_path, 'rb') as f_in:
-        gz_path = f'{file_path}.gz'
-        with gzip.open(gz_path, 'wb') as f_out:
-            f_out.writelines(f_in)
-    os.remove(file_path)  # 删除原文件
-    return gz_path
+    try:
+        with open(file_path, 'rb') as f_in:
+            gz_path = f'{file_path}.gz'
+            with gzip.open(gz_path, 'wb') as f_out:
+                f_out.writelines(f_in)
+        os.remove(file_path)  # 删除原文件
+        return gz_path
+    except Exception as e:
+        logging.error(f'压缩文件 {file_path} 失败: {e}')
+        return file_path
 
 def get_env(key, default=None):
     return os.environ.get(key, default)
 
 def create_backup():
-    import os
-    from datetime import datetime
-    import gzip
-
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_dir = os.path.join('data', 'backups', datetime.now().strftime('%Y%m%d'))
-    os.makedirs(backup_dir, exist_ok=True)
-
-    backup_file = os.path.join(backup_dir, f'backup_{timestamp}.dump')
-    log_file = os.path.join(backup_dir, f'log_{timestamp}.log')
-
-    # Perform backup and write to backup_file
-    # Write logs to log_file
-
-    # Compress both files
-    with open(backup_file, 'rb') as f_in:
-        with gzip.open(f'{backup_file}.gz', 'wb') as f_out:
-            f_out.writelines(f_in)
-    os.remove(backup_file)
-
-    with open(log_file, 'rb') as f_in:
-        with gzip.open(f'{log_file}.gz', 'wb') as f_out:
-            f_out.writelines(f_in)
-    os.remove(log_file)
     # 获取环境变量
     host = get_env('PG_HOST', 'localhost')
     port = get_env('PG_PORT', '5432')
@@ -148,8 +128,6 @@ def cleanup_old_files(directory, retention_days, pattern='backup_*'):
             except Exception as e:
                 logging.error(f'删除文件失败 {file_path}: {e}')
 
-# main() 函数保持不变
-            
 def main():
     # 从环境变量获取定时配置
     backup_time = get_env('BACKUP_TIME', '03:00')  # 默认凌晨3点
