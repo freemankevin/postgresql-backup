@@ -31,8 +31,6 @@ jobs:
         context: .
         push: true
         platforms: linux/amd64,linux/arm64
-        tags: |
-          freelabspace/postgresql-backup:latest
-          freelabspace/postgresql-backup:v1
+        tags: freelabspace/postgresql-backup:latest
         cache-from: type=registry,ref=freelabspace/postgresql-backup:latest
         cache-to: type=inline
