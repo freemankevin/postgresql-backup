@@ -12,13 +12,16 @@ ENV TZ=Asia/Shanghai \
     BACKUP_RETENTION_DAYS=7
 
 # 安装必要的包并设置时区
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     postgresql-client \
     tzdata \
     curl \
-    && pip3 install psycopg2-binary python-dotenv schedule fastapi uvicorn \
+    build-essential \
+    python3-dev \
+    libpq-dev \
+    && pip3 install --no-cache-dir psycopg2-binary python-dotenv schedule fastapi uvicorn \
     && mkdir -p /backups /app \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
