@@ -26,11 +26,6 @@ docker pull freelabspace/postgresql-backup:v1
 docker-compose up -d
 ```
 
-### Access Web Interface
-- Default address: `http://localhost:8000`
-- Default username: `admin`
-- Default password: `Lzf@BzjGwv`
-
 ### Configuration
 
 #### Environment Variables

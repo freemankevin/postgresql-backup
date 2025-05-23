@@ -26,11 +26,6 @@ docker pull freelabspace/postgresql-backup:v1
 docker-compose up -d
 ```
 
-### 访问 Web 界面
-- 默认地址：`http://localhost:8000`
-- 默认用户名：`admin`
-- 默认密码：`Lzf@BzjGwv`
-
 ### 配置说明
 
 #### 环境变量
