@@ -40,7 +40,31 @@ def compress_file(file_path):
 def get_env(key, default=None):
     return os.environ.get(key, default)
 
-def create_backup():
+def backup_postgresql():
+    import os
+    from datetime import datetime
+    import gzip
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_dir = os.path.join('data', 'backups', datetime.now().strftime('%Y%m%d'))
+    os.makedirs(backup_dir, exist_ok=True)
+
+    backup_file = os.path.join(backup_dir, f'backup_{timestamp}.dump')
+    log_file = os.path.join(backup_dir, f'log_{timestamp}.log')
+
+    # Perform backup and write to backup_file
+    # Write logs to log_file
+
+    # Compress both files
+    with open(backup_file, 'rb') as f_in:
+        with gzip.open(f'{backup_file}.gz', 'wb') as f_out:
+            f_out.writelines(f_in)
+    os.remove(backup_file)
+
+    with open(log_file, 'rb') as f_in:
+        with gzip.open(f'{log_file}.gz', 'wb') as f_out:
+            f_out.writelines(f_in)
+    os.remove(log_file)
     # 获取环境变量
     host = get_env('PG_HOST', 'localhost')
     port = get_env('PG_PORT', '5432')
