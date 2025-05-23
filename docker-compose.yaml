@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./pgdata/data:/var/lib/postgresql/data
+      - ./data/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 30s
@@ -40,7 +40,7 @@ services:
       WEB_UI_USERNAME: admin
       WEB_UI_PASSWORD: Lzf@BzjGwv
     volumes:
-      - ./data:/backups
+      - ./data/backups:/backups
     depends_on:
       postgres:
         condition: service_healthy
