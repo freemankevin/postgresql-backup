@@ -28,6 +28,11 @@ def setup_logging(backup_dir):
             logging.StreamHandler()
         ]
     )
+    # 强制刷新日志文件
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, logging.FileHandler):
+            handler.flush()
+    
     logging.info(f"日志文件已初始化: {log_file}")
     return log_dir
 
@@ -45,9 +50,13 @@ def compress_file(file_path):
         return file_path
 
 def get_env(key, default=None):
-    return os.environ.get(key, default)
+    value = os.environ.get(key, default)
+    logging.info(f"获取环境变量 {key}: {value}")
+    return value
 
 def create_backup():
+    logging.info("开始执行备份任务...")
+    
     # 获取环境变量
     host = get_env('PG_HOST', 'localhost')
     port = get_env('PG_PORT', '5432')
@@ -63,33 +72,40 @@ def create_backup():
     
     # 确保备份根目录存在
     Path(backup_dir).mkdir(parents=True, exist_ok=True)
+    logging.info(f"备份根目录已确保存在: {backup_dir}")
     
     # 获取当前日期作为备份目录
     date_dir = datetime.now().strftime('%Y%m%d')
     backup_date_dir = os.path.join(backup_dir, date_dir)
     Path(backup_date_dir).mkdir(parents=True, exist_ok=True)
+    logging.info(f"备份日期目录已创建: {backup_date_dir}")
 
     # 生成时间戳（包含日期和时间）
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    logging.info(f"当前时间戳: {timestamp}")
 
     # 设置环境变量
     env = os.environ.copy()
     env['PGPASSWORD'] = password
+    logging.info(f"已设置环境变量 PGPASSWORD")
 
     backup_files = []
     for database in databases:
         database = database.strip()
         if not database:
+            logging.info("跳过空数据库名称")
             continue
 
         try:
             # 为每个数据库生成备份文件名，存储在日期目录下，包含日期
             backup_file = os.path.join(backup_date_dir, f'backup_{database}_{timestamp}.dump')
+            logging.info(f"准备备份数据库 {database} 到 {backup_file}")
 
             # 检查pg_dump路径
             pg_dump_path = shutil.which('pg_dump')
             if not pg_dump_path:
                 raise Exception('pg_dump命令未找到，请确保PostgreSQL客户端工具已安装')
+            logging.info(f"找到 pg_dump 命令: {pg_dump_path}")
                 
             # 执行pg_dump
             cmd = [
@@ -101,9 +117,9 @@ def create_backup():
                 '-F', 'c',
                 '-f', backup_file
             ]
-            logging.info(f"开始备份数据库 {database} 到 {backup_file}")
-            subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
-            logging.info(f"pg_dump 输出: {subprocess.run(cmd, env=env, capture_output=True, text=True).stdout}")
+            logging.info(f"执行命令: {' '.join(cmd)}")
+            result = subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
+            logging.info(f"pg_dump 输出: {result.stdout}")
             
             # 压缩备份文件
             if enable_compression:
@@ -120,11 +136,17 @@ def create_backup():
         except Exception as e:
             logging.error(f'数据库 {database} 处理过程中出错: {e}')
 
+        # 强制刷新日志
+        for handler in logging.getLogger().handlers:
+            if isinstance(handler, logging.FileHandler):
+                handler.flush()
+
     if not backup_files:
         logging.error('没有成功完成任何数据库的备份')
         sys.exit(1)
 
     # 清理旧备份和日志
+    logging.info("开始清理旧备份和日志...")
     cleanup_old_files(backup_dir, retention_days)
     cleanup_old_files(backup_dir, retention_days, pattern='backup_*.log')
 
