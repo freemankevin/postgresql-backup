@@ -1,27 +1,10 @@
-FROM debian:12-slim
+FROM python:3.9-slim
 
-# 设置时区和语言环境
-ENV TZ=Asia/Shanghai \
-    LANG=C.UTF-8 \
-    PG_HOST=postgres \
-    PG_PORT=5432 \
-    PG_USER=postgres \
-    PG_PASSWORD=postgres \
-    PG_DATABASE=postgres \
-    BACKUP_DIR=/backups \
-    BACKUP_RETENTION_DAYS=7
-
-# 安装必要的包并设置时区
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
     postgresql-client \
     tzdata \
     curl \
-    build-essential \
-    python3-dev \
-    libpq-dev \
-    && pip3 install --no-cache-dir --break-system-packages psycopg2-binary python-dotenv schedule fastapi uvicorn \
+    && pip install --no-cache-dir psycopg2-binary python-dotenv schedule \
     && mkdir -p /backups /app \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
@@ -29,14 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# 复制应用文件
-COPY backup.py restore.py app.py ./
+COPY backup.py restore.py ./
 
-# 复制静态文件
-COPY static/index.html static/styles.css static/app.js ./static/
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
-
-ENTRYPOINT ["python3", "app.py"]
+ENTRYPOINT ["python3", "backup.py"]

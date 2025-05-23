@@ -6,6 +6,7 @@ import logging
 import schedule
 from datetime import datetime
 import subprocess
+import shutil
 from pathlib import Path
 
 def setup_logging(backup_dir):
@@ -43,9 +44,9 @@ def create_backup():
     # 获取环境变量
     host = get_env('PG_HOST', 'localhost')
     port = get_env('PG_PORT', '5432')
-    user = get_env('PG_USER')
-    password = get_env('PG_PASSWORD')
-    databases = get_env('PG_DATABASE', '').split(',')
+    user = get_env('PG_USER', 'postgres')
+    password = get_env('PG_PASSWORD', 'postgres')
+    databases = get_env('PG_DATABASE', 'postgres').split(',')
     backup_dir = get_env('BACKUP_DIR', '/backups')
     retention_days = int(get_env('BACKUP_RETENTION_DAYS', '7'))
     enable_compression = get_env('ENABLE_COMPRESSION', 'true').lower() == 'true'
@@ -73,9 +74,14 @@ def create_backup():
             # 为每个数据库生成备份文件名
             backup_file = os.path.join(backup_dir, f'backup_{database}_{timestamp}.dump')
 
+            # 检查pg_dump路径
+            pg_dump_path = shutil.which('pg_dump')
+            if not pg_dump_path:
+                raise Exception('pg_dump命令未找到，请确保PostgreSQL客户端工具已安装')
+                
             # 执行pg_dump
             cmd = [
-                'pg_dump',
+                pg_dump_path,
                 '-h', host,
                 '-p', port,
                 '-U', user,
