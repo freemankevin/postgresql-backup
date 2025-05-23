@@ -21,10 +21,15 @@ DEFAULT_PASSWORD = "Lzf@BzjGwv"
 USERNAME = os.environ.get("WEB_UI_USERNAME", DEFAULT_USERNAME)
 PASSWORD = os.environ.get("WEB_UI_PASSWORD", DEFAULT_PASSWORD)
 
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # 打印认证信息
-print(f"Web UI 认证信息：")
-print(f"用户名: {USERNAME}")
-print(f"密码: {PASSWORD}")
+logger.info(f"Web UI 认证信息 - 用户名: {USERNAME}")
 
 security = HTTPBasic()
 
@@ -40,13 +45,13 @@ def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)) ->
         )
     return True
 
-app = FastAPI(title="PostgreSQL Backup Monitor")
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 在后台线程中启动备份服务
+    logger.info("正在启动备份线程...")
     backup_thread = threading.Thread(target=backup_main, daemon=True)
     backup_thread.start()
+    logger.info(f"备份线程已启动，线程ID: {backup_thread.ident}")
     yield
     # 清理资源（如果需要）
 
