@@ -97,37 +97,56 @@ def create_backup():
             continue
 
         try:
-            # 为每个数据库生成备份文件名，存储在日期目录下，包含日期
-            backup_file = os.path.join(backup_date_dir, f'backup_{database}_{timestamp}.dump')
-            logging.info(f"准备备份数据库 {database} 到 {backup_file}")
-
             # 检查pg_dump路径
             pg_dump_path = shutil.which('pg_dump')
             if not pg_dump_path:
                 raise Exception('pg_dump命令未找到，请确保PostgreSQL客户端工具已安装')
             logging.info(f"找到 pg_dump 命令: {pg_dump_path}")
-                
-            # 执行pg_dump
-            cmd = [
+
+            # 1. 生成 .dump 文件（自定义格式）
+            dump_file = os.path.join(backup_date_dir, f'backup_{database}_{timestamp}.dump')
+            logging.info(f"准备生成 .dump 备份文件: {dump_file}")
+            dump_cmd = [
                 pg_dump_path,
                 '-h', host,
                 '-p', port,
                 '-U', user,
                 '-d', database,
-                '-F', 'c',
-                '-f', backup_file
+                '-F', 'c',  # 自定义格式
+                '-f', dump_file
             ]
-            logging.info(f"执行命令: {' '.join(cmd)}")
-            result = subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
-            logging.info(f"pg_dump 输出: {result.stdout}")
-            
-            # 压缩备份文件
+            logging.info(f"执行 .dump 备份命令: {' '.join(dump_cmd)}")
+            dump_result = subprocess.run(dump_cmd, env=env, check=True, capture_output=True, text=True)
+            logging.info(f"pg_dump (.dump) 输出: {dump_result.stdout}")
+
+            # 压缩 .dump 文件
             if enable_compression:
-                backup_file = compress_file(backup_file)
-                logging.info(f'数据库 {database} 备份已压缩: {backup_file}')
-            
-            logging.info(f'数据库 {database} 备份成功: {backup_file}')
-            backup_files.append(backup_file)
+                dump_file = compress_file(dump_file)
+                logging.info(f'数据库 {database} 的 .dump 备份已压缩: {dump_file}')
+            backup_files.append(dump_file)
+
+            # 2. 生成 .sql 文件（纯文本 SQL 格式）
+            sql_file = os.path.join(backup_date_dir, f'backup_{database}_{timestamp}.sql')
+            logging.info(f"准备生成 .sql 备份文件: {sql_file}")
+            sql_cmd = [
+                pg_dump_path,
+                '-h', host,
+                '-p', port,
+                '-U', user,
+                '-d', database,
+                '-f', sql_file  # 默认格式为纯文本 SQL
+            ]
+            logging.info(f"执行 .sql 备份命令: {' '.join(sql_cmd)}")
+            sql_result = subprocess.run(sql_cmd, env=env, check=True, capture_output=True, text=True)
+            logging.info(f"pg_dump (.sql) 输出: {sql_result.stdout}")
+
+            # 可选：压缩 .sql 文件（如果需要）
+            if enable_compression:
+                sql_file = compress_file(sql_file)
+                logging.info(f'数据库 {database} 的 .sql 备份已压缩: {sql_file}')
+            backup_files.append(sql_file)
+
+            logging.info(f'数据库 {database} 备份成功: {dump_file} 和 {sql_file}')
 
         except subprocess.CalledProcessError as e:
             logging.error(f'数据库 {database} 备份失败: {e}')
