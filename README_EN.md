@@ -23,25 +23,6 @@
 - 🖥️ Multi-architecture support (amd64/arm64)
 - 🏗️ Automatic Docker image building
 
-## 🎯 Features
-
-### 🔄 Automatic Backup
-- 🕒 Scheduled backup for PostgreSQL databases
-- ⚙️ Configurable backup interval (daily, hourly, or custom minutes)
-- 🗜️ Automatic backup file compression
-- 🗑️ Automatic cleanup of expired backup files
-
-### 🌐 Web Management Interface
-- 📊 Real-time backup status monitoring
-- 📁 Backup file list
-- 📜 Backup logs
-- 📖 Pagination support
-
-### 🐳 Container Deployment
-- 🐋 Docker deployment support
-- 🖥️ Multi-architecture support (amd64/arm64)
-- 🏗️ Automatic Docker image building
-
 ## Usage
 
 ### Quick Start
