@@ -10,12 +10,13 @@ import shutil
 from pathlib import Path
 
 def setup_logging(backup_dir):
-    # 设置日志目录
-    log_dir = os.path.join(backup_dir, 'logs')
+    # 获取当前日期作为目录
+    date_dir = datetime.now().strftime('%Y%m%d')
+    log_dir = os.path.join(backup_dir, date_dir, 'logs')
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     
     # 生成日志文件名
-    timestamp = datetime.now().strftime('%Y%m')
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = os.path.join(log_dir, f'backup_{timestamp}.log')
     
     # 配置日志
@@ -27,6 +28,7 @@ def setup_logging(backup_dir):
             logging.StreamHandler()
         ]
     )
+    logging.info(f"日志目录已初始化: {log_dir}")
     return log_dir
 
 def compress_file(file_path):
@@ -36,6 +38,7 @@ def compress_file(file_path):
             with gzip.open(gz_path, 'wb') as f_out:
                 f_out.writelines(f_in)
         os.remove(file_path)  # 删除原文件
+        logging.info(f"文件 {file_path} 已成功压缩为 {gz_path}")
         return gz_path
     except Exception as e:
         logging.error(f'压缩文件 {file_path} 失败: {e}')
@@ -55,14 +58,19 @@ def create_backup():
     retention_days = int(get_env('BACKUP_RETENTION_DAYS', '7'))
     enable_compression = get_env('ENABLE_COMPRESSION', 'true').lower() == 'true'
 
-    # 设置日志
+    # 设置日志，自动创建日期目录
     log_dir = setup_logging(backup_dir)
     
-    # 确保备份目录存在
+    # 确保备份根目录存在
     Path(backup_dir).mkdir(parents=True, exist_ok=True)
+    
+    # 获取当前日期作为备份目录
+    date_dir = datetime.now().strftime('%Y%m%d')
+    backup_date_dir = os.path.join(backup_dir, date_dir)
+    Path(backup_date_dir).mkdir(parents=True, exist_ok=True)
 
     # 生成时间戳
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime('%H%M%S')
 
     # 设置环境变量
     env = os.environ.copy()
@@ -75,8 +83,8 @@ def create_backup():
             continue
 
         try:
-            # 为每个数据库生成备份文件名
-            backup_file = os.path.join(backup_dir, f'backup_{database}_{timestamp}.dump')
+            # 为每个数据库生成备份文件名，存储在日期目录下
+            backup_file = os.path.join(backup_date_dir, f'backup_{database}_{timestamp}.dump')
 
             # 检查pg_dump路径
             pg_dump_path = shutil.which('pg_dump')
@@ -93,6 +101,7 @@ def create_backup():
                 '-F', 'c',
                 '-f', backup_file
             ]
+            logging.info(f"开始备份数据库 {database} 到 {backup_file}")
             subprocess.run(cmd, env=env, check=True)
             
             # 压缩备份文件
@@ -119,7 +128,7 @@ def create_backup():
 
 def cleanup_old_files(directory, retention_days, pattern='backup_*'):
     current_time = time.time()
-    for file_path in Path(directory).glob(pattern):
+    for file_path in Path(directory).rglob(pattern):  # 使用 rglob 处理嵌套目录
         file_time = file_path.stat().st_mtime
         if (current_time - file_time) > (retention_days * 86400):
             try:
@@ -146,6 +155,7 @@ def main():
         sys.exit(1)
     
     # 启动时执行一次备份
+    logging.info("程序启动，执行首次备份...")
     create_backup()
     
     # 保持程序运行并执行定时任务
