@@ -12,7 +12,7 @@ from pathlib import Path
 def setup_logging(backup_dir):
     # 获取当前日期作为目录
     date_dir = datetime.now().strftime('%Y%m%d')
-    log_dir = os.path.join(backup_dir, date_dir, 'logs')
+    log_dir = os.path.join(backup_dir, date_dir)
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     
     # 生成日志文件名
@@ -28,7 +28,7 @@ def setup_logging(backup_dir):
             logging.StreamHandler()
         ]
     )
-    logging.info(f"日志目录已初始化: {log_dir}")
+    logging.info(f"日志文件已初始化: {log_file}")
     return log_dir
 
 def compress_file(file_path):
@@ -69,8 +69,8 @@ def create_backup():
     backup_date_dir = os.path.join(backup_dir, date_dir)
     Path(backup_date_dir).mkdir(parents=True, exist_ok=True)
 
-    # 生成时间戳
-    timestamp = datetime.now().strftime('%H%M%S')
+    # 生成时间戳（包含日期和时间）
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
     # 设置环境变量
     env = os.environ.copy()
@@ -83,7 +83,7 @@ def create_backup():
             continue
 
         try:
-            # 为每个数据库生成备份文件名，存储在日期目录下
+            # 为每个数据库生成备份文件名，存储在日期目录下，包含日期
             backup_file = os.path.join(backup_date_dir, f'backup_{database}_{timestamp}.dump')
 
             # 检查pg_dump路径
@@ -102,7 +102,8 @@ def create_backup():
                 '-f', backup_file
             ]
             logging.info(f"开始备份数据库 {database} 到 {backup_file}")
-            subprocess.run(cmd, env=env, check=True)
+            subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
+            logging.info(f"pg_dump 输出: {subprocess.run(cmd, env=env, capture_output=True, text=True).stdout}")
             
             # 压缩备份文件
             if enable_compression:
@@ -114,6 +115,7 @@ def create_backup():
 
         except subprocess.CalledProcessError as e:
             logging.error(f'数据库 {database} 备份失败: {e}')
+            logging.error(f'pg_dump 错误输出: {e.stderr}')
             # 继续备份其他数据库
         except Exception as e:
             logging.error(f'数据库 {database} 处理过程中出错: {e}')
@@ -124,7 +126,7 @@ def create_backup():
 
     # 清理旧备份和日志
     cleanup_old_files(backup_dir, retention_days)
-    cleanup_old_files(log_dir, retention_days, pattern='backup_*.log')
+    cleanup_old_files(backup_dir, retention_days, pattern='backup_*.log')
 
 def cleanup_old_files(directory, retention_days, pattern='backup_*'):
     current_time = time.time()
