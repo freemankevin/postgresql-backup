@@ -1,32 +1,28 @@
-# 📂 PostgreSQL 备份管理工具
+# 🐘 PostgreSQL 备份工具镜像
 
 🌍 **中文** | [ENGLISH](README_EN.md)
 
-🚀 一个强大的 PostgreSQL 数据库备份工具
+📦 一个自动备份的 PostgreSQL 数据库备份工具
 
-## 🎯 功能概述
 
-### 🔄 自动备份
-- 🕒 支持定时备份 PostgreSQL 数据库
-- ⚙️ 可配置备份时间间隔（每天、每小时或自定义分钟数）
-- 🗜️ 自动压缩备份文件
-- 🗑️ 自动清理过期备份文件
-
-### 🌐 Web 管理界面
-- 📊 实时查看备份状态
-- 📁 查看备份文件列表
-- 📜 查看备份日志
-- 📖 支持分页查询
-
-### 🐳 容器化部署
-- 🐋 支持 Docker 部署
-- 🖥️ 支持多架构（amd64/arm64）
-- 🏗️ 自动构建 Docker 镜像
+## ✨ 功能
+- ✅ 支持主流 PostgreSQL 绝大部分版本
+- 🖥️ 多平台支持（linux/amd64, linux/arm64）
+- 🕒 支持定时自动备份 PostgreSQL 数据库
+- 🔄 通过 GitHub Actions 自动更新与发布Docker 镜像
 
 ## 使用方法
 
 ### 快速启动
 ```bash
+# 拉取代码
+git clone https://github.com/freemankevin/postgresql-backup.git
+cd postgresql-backup
+
+# 拉取镜像
+docker pull freelabspace/postgresql-backup:v1
+
+# 使用 docker-compose 启动
 docker-compose up -d
 ```
 

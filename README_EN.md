@@ -1,37 +1,33 @@
-# 📂 PostgreSQL Backup Manager
+# 🐘 PostgreSQL Backup Tool Image
 
 🌍 **ENGLISH** | [中文](README.md)
 
-🚀 A powerful PostgreSQL database backup tool.
+📦 An automated PostgreSQL database backup tool
 
-## 🎯 Features
 
-### 🔄 Automatic Backup
-- 🕒 Scheduled backup for PostgreSQL databases
-- ⚙️ Configurable backup interval (daily, hourly, or custom minutes)
-- 🗜️ Automatic backup file compression
-- 🗑️ Automatic cleanup of expired backup files
-
-### 🌐 Web Management Interface
-- 📊 Real-time backup status monitoring
-- 📁 Backup file list
-- 📜 Backup logs
-- 📖 Pagination support
-
-### 🐳 Container Deployment
-- 🐋 Docker deployment support
-- 🖥️ Multi-architecture support (amd64/arm64)
-- 🏗️ Automatic Docker image building
+## ✨ Features
+- ✅ Supports most major PostgreSQL versions
+- 🖥️ Multi-platform support (linux/amd64, linux/arm64)
+- 🕒 Scheduled automatic PostgreSQL database backups
+- 🔄 Automatic updates and Docker image releases via GitHub Actions
 
 ## Usage
 
 ### Quick Start
 ```bash
+# Clone the code
+git clone https://github.com/freemankevin/postgresql-backup.git
+cd postgresql-backup
+
+# Pull the image
+docker pull freelabspace/postgresql-backup:v1
+
+# Start with docker-compose
 docker-compose up -d
 ```
 
-### Access Web UI
-- Default URL: `http://localhost:8000`
+### Access Web Interface
+- Default address: `http://localhost:8000`
 - Default username: `admin`
 - Default password: `Lzf@BzjGwv`
 
@@ -39,7 +35,7 @@ docker-compose up -d
 
 #### Environment Variables
 | Variable | Default | Description |
-|----------|---------|--------------|
+|----------|---------|-------------|
 | PG_HOST | postgres | PostgreSQL host address |
 | PG_PORT | 5432 | PostgreSQL port |
 | PG_USER | postgres | PostgreSQL username |
@@ -49,5 +45,5 @@ docker-compose up -d
 | BACKUP_INTERVAL | daily | Backup interval (daily/hourly/minutes) |
 | BACKUP_RETENTION_DAYS | 7 | Backup file retention days |
 | ENABLE_COMPRESSION | true | Enable compression |
-| WEB_UI_USERNAME | admin | Web UI username |
-| WEB_UI_PASSWORD | Lzf@BzjGwv | Web UI password |
+| WEB_UI_USERNAME | admin | Web interface username |
+| WEB_UI_PASSWORD | Lzf@BzjGwv | Web interface password |
