@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
 
   pg-backup:
-    image: freelabspace/postgresql-backup:latest
+    image: freelabspace/postgresql-backup:v1
     container_name: pg-backup
     ports:
       - "8000:8000"

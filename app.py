@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Query
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -41,10 +42,15 @@ def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)) ->
 
 app = FastAPI(title="PostgreSQL Backup Monitor")
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     # 在后台线程中启动备份服务
-    threading.Thread(target=backup_main, daemon=True).start()
+    backup_thread = threading.Thread(target=backup_main, daemon=True)
+    backup_thread.start()
+    yield
+    # 清理资源（如果需要）
+
+app = FastAPI(title="PostgreSQL Backup Monitor", lifespan=lifespan)
 
 # 挂载静态文件目录
 app.mount("/static", StaticFiles(directory="static"), name="static")
