@@ -40,7 +40,7 @@ def compress_file(file_path):
 def get_env(key, default=None):
     return os.environ.get(key, default)
 
-def backup_postgresql():
+def create_backup():
     import os
     from datetime import datetime
     import gzip

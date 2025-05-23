@@ -24,7 +24,7 @@ services:
       - postgres_network
 
   pg-backup:
-    image: freelabspace/postgresql-backup:v1
+    image: freelabspace/postgresql-backup:latest
     container_name: pg-backup
     environment:
       PG_HOST: postgres
