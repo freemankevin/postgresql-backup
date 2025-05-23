@@ -1,6 +1,8 @@
 # 📂 PostgreSQL Backup Manager
 
-> 🚀 A powerful PostgreSQL database backup tool.
+🌍 **ENGLISH** | [中文](README.md)
+
+🚀 A powerful PostgreSQL database backup tool.
 
 ## 🎯 Features
 

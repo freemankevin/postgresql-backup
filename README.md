@@ -1,6 +1,8 @@
 # 📂 PostgreSQL 备份管理工具
 
-> 🚀 一个强大的 PostgreSQL 数据库备份工具
+🌍 **中文** | [ENGLISH](README_EN.md)
+
+🚀 一个强大的 PostgreSQL 数据库备份工具
 
 ## 🎯 功能概述
 
