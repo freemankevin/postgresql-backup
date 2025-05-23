@@ -45,5 +45,3 @@ docker-compose up -d
 | BACKUP_INTERVAL | daily | 备份间隔（daily/hourly/分钟数） |
 | BACKUP_RETENTION_DAYS | 7 | 备份文件保留天数 |
 | ENABLE_COMPRESSION | true | 是否启用压缩 |
-| WEB_UI_USERNAME | admin | Web 界面用户名 |
-| WEB_UI_PASSWORD | Lzf@BzjGwv | Web 界面密码 |

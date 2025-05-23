@@ -45,5 +45,3 @@ docker-compose up -d
 | BACKUP_INTERVAL | daily | Backup interval (daily/hourly/minutes) |
 | BACKUP_RETENTION_DAYS | 7 | Backup file retention days |
 | ENABLE_COMPRESSION | true | Enable compression |
-| WEB_UI_USERNAME | admin | Web interface username |
-| WEB_UI_PASSWORD | Lzf@BzjGwv | Web interface password |
