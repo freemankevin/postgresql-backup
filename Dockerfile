@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
     libpq-dev \
-    && pip3 install --no-cache-dir psycopg2-binary python-dotenv schedule fastapi uvicorn \
+    && pip3 install --no-cache-dir --break-system-packages psycopg2-binary python-dotenv schedule fastapi uvicorn \
     && mkdir -p /backups /app \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
