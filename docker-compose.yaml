@@ -1,0 +1,53 @@
+# version: '3.8'
+
+services:
+  postgres:
+    image: freelabspace/postgresql-postgis:12.22
+    container_name: postgres-postgis
+    environment:
+      - TZ=Asia/Shanghai
+      - POSTGRES_DB=gis
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  pg-backup:
+    image: freelabspace/postgresql-backup:latest
+    container_name: pg-backup
+    ports:
+      - "8000:8000"
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      PG_DATABASE: postgres,template1,gis  # 使用逗号分隔多个数据库
+      BACKUP_RETENTION_DAYS: 7 # 保留7天
+      BACKUP_TIME: "03:00"  # 每天凌晨3点执行，24小时制
+      BACKUP_INTERVAL: daily  # 备份间隔：daily（每天）、hourly（每小时）或数字（每隔多少分钟）
+      ENABLE_COMPRESSION: "true" # 启用压缩
+      # Web UI 认证配置（可选，默认值：admin/Lzf@BzjGwv）
+      WEB_UI_USERNAME: admin
+      WEB_UI_PASSWORD: Lzf@BzjGwv
+    volumes:
+      - ./data:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped

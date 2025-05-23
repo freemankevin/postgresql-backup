@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostgreSQL 备份监控</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">PostgreSQL 备份监控</h1>
+            <p class="text-gray-600">状态: {{ health.status === 'healthy' ? '正常' : '异常' }}</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 备份列表 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">备份文件</h2>
+                <div class="overflow-auto max-h-96">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2">文件名</th>
+                                <th class="text-left py-2">大小</th>
+                                <th class="text-left py-2">创建时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="backup in backups.items" :key="backup.name" class="border-b hover:bg-gray-50">
+                                <td class="py-2">{{ backup.name }}</td>
+                                <td class="py-2">{{ formatSize(backup.size) }}</td>
+                                <td class="py-2">{{ formatDate(backup.created_at) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <!-- 分页控件 -->
+                    <div class="mt-4 flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            共 {{ backups.total }} 个文件，第 {{ backups.page }} 页，共 {{ backups.total_pages }} 页
+                        </div>
+                        <div class="flex space-x-2">
+                            <button 
+                                @click="changePage(backups.page - 1)" 
+                                :disabled="backups.page <= 1"
+                                class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50"
+                            >
+                                上一页
+                            </button>
+                            <button 
+                                @click="changePage(backups.page + 1)" 
+                                :disabled="backups.page >= backups.total_pages"
+                                class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50"
+                            >
+                                下一页
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日志显示 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">最新日志</h2>
+                <div class="bg-gray-900 text-gray-100 p-4 rounded overflow-auto max-h-96 font-mono text-sm">
+                    <div v-for="(log, index) in logs" :key="index">{{ log }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+name: Docker Build and Publish
+
+on:
+  schedule:
+    - cron: '0 1 1 * *'  # 每月1号凌晨1点
+  workflow_dispatch:  # 手动触发
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        platforms: linux/amd64,linux/arm64
+        tags: |
+          freelabspace/postgresql-backup:latest
+          freelabspace/postgresql-backup:v1
+        cache-from: type=registry,ref=freelabspace/postgresql-backup:latest
+        cache-to: type=inline
