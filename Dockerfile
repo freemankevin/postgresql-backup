@@ -16,4 +16,11 @@ WORKDIR /app
 
 COPY backup.py restore.py ./
 
-ENTRYPOINT ["python3", "backup.py"]
+# 确保日志目录存在
+RUN mkdir -p /backups/logs
+
+# 添加执行权限
+RUN chmod +x /app/backup.py
+
+# 使用 -u 参数确保 Python 输出不被缓冲
+ENTRYPOINT ["python3", "-u", "backup.py"]
