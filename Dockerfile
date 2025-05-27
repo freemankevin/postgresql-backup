@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # 设置环境变量
 ENV TZ=Asia/Shanghai
