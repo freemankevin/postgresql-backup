@@ -10,7 +10,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - ./data/pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -49,27 +49,27 @@ services:
       - postgres_network
 
   # 可选：独立的恢复服务（仅在需要时启动）
-  pg-restore:
-    image: freelabspace/postgresql-backup:latest
-    container_name: pg-restore
-    environment:
-      TZ: Asia/Shanghai
-      PG_HOST: postgres
-      PG_PORT: 5432
-      PG_USER: postgres
-      PG_PASSWORD: postgres
-      PG_DATABASE: gis  # 默认恢复到的数据库
-    volumes:
-      - ./data/backups:/backups
-    entrypoint: ["python3", "restore.py"]
-    command: ["--help"]  # 默认显示帮助
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - postgres_network
-    profiles:
-      - restore  # 使用profile，只在需要时启动
+  # pg-restore:
+  #   image: freelabspace/postgresql-backup:latest
+  #   container_name: pg-restore
+  #   environment:
+  #     TZ: Asia/Shanghai
+  #     PG_HOST: postgres
+  #     PG_PORT: 5432
+  #     PG_USER: postgres
+  #     PG_PASSWORD: postgres
+  #     PG_DATABASE: gis  # 默认恢复到的数据库
+  #   volumes:
+  #     - ./data/backups:/backups
+  #   entrypoint: ["python3", "restore.py"]
+  #   command: ["--help"]  # 默认显示帮助
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - postgres_network
+  #   profiles:
+  #     - restore  # 使用profile，只在需要时启动
 
 networks:
   postgres_network:
