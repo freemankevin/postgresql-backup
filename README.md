@@ -24,7 +24,18 @@ docker pull freelabspace/postgresql-backup:v1
 
 # 使用 docker-compose 启动
 docker-compose up -d
+
+
+# 恢复数据
+# 进入备份容器
+docker-compose exec pg-backup bash
+
+# 在容器内执行恢复
+python3 restore.py /backups/data/20241201/gis_20241201_030001.dump -d gis
+
 ```
+
+
 
 ### 配置说明
 

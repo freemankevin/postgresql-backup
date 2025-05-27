@@ -27,6 +27,7 @@ services:
     image: freelabspace/postgresql-backup:latest
     container_name: pg-backup
     environment:
+      TZ: Asia/Shanghai
       PG_HOST: postgres
       PG_PORT: 5432
       PG_USER: postgres
@@ -36,6 +37,8 @@ services:
       BACKUP_TIME: "03:00"  # 每天凌晨3点执行，24小时制
       BACKUP_INTERVAL: daily  # 备份间隔：daily（每天）、hourly（每小时）或数字（每隔多少分钟）
       ENABLE_COMPRESSION: "true" # 启用压缩
+      BACKUP_FORMAT: "both"  # 备份格式: both（同时生成dump和sql）、dump（仅dump格式）、sql（仅sql格式）
+      BACKUP_DIR: /backups
     volumes:
       - ./data/backups:/backups
     depends_on:
@@ -45,6 +48,28 @@ services:
     networks:
       - postgres_network
 
+  # 可选：独立的恢复服务（仅在需要时启动）
+  pg-restore:
+    image: freelabspace/postgresql-backup:latest
+    container_name: pg-restore
+    environment:
+      TZ: Asia/Shanghai
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      PG_DATABASE: gis  # 默认恢复到的数据库
+    volumes:
+      - ./data/backups:/backups
+    entrypoint: ["python3", "restore.py"]
+    command: ["--help"]  # 默认显示帮助
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - postgres_network
+    profiles:
+      - restore  # 使用profile，只在需要时启动
 
 networks:
   postgres_network:
