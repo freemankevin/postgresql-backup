@@ -34,9 +34,5 @@ COPY backup.py restore.py ./
 # 设置权限
 RUN chmod +x backup.py restore.py
 
-# 健康检查
-HEALTHCHECK --interval=5m --timeout=30s --start-period=1m --retries=3 \
-    CMD pgrep -f "python.*backup.py" || exit 1
-
 # 默认入口点
 ENTRYPOINT ["python3", "backup.py"]
