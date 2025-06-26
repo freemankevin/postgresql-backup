@@ -1,12 +1,10 @@
-# version: '3.8'
-
 services:
   postgres:
-    image: freelabspace/postgresql-postgis:12.22
+    image: freelabspace/postgresql-postgis:17.5
     container_name: postgres-postgis
     environment:
       - TZ=Asia/Shanghai
-      - POSTGRES_DB=gis
+      - POSTGRES_DB=dev
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
@@ -32,7 +30,7 @@ services:
       PG_PORT: 5432
       PG_USER: postgres
       PG_PASSWORD: postgres
-      PG_DATABASE: gis,dev,sys  # 使用逗号分隔多个数据库
+      PG_DATABASE: dev  # 使用逗号分隔多个数据库
       BACKUP_RETENTION_DAYS: 7 # 保留7天
       BACKUP_TIME: "03:00"  # 每天凌晨3点执行，24小时制
       BACKUP_INTERVAL: daily  # 备份间隔：daily（每天）、hourly（每小时）或数字（每隔多少分钟）
@@ -47,29 +45,6 @@ services:
     restart: unless-stopped
     networks:
       - postgres_network
-
-  # 可选：独立的恢复服务（仅在需要时启动）
-  # pg-restore:
-  #   image: freelabspace/postgresql-backup:latest
-  #   container_name: pg-restore
-  #   environment:
-  #     TZ: Asia/Shanghai
-  #     PG_HOST: postgres
-  #     PG_PORT: 5432
-  #     PG_USER: postgres
-  #     PG_PASSWORD: postgres
-  #     PG_DATABASE: gis  # 默认恢复到的数据库
-  #   volumes:
-  #     - ./data/backups:/backups
-  #   entrypoint: ["python3", "restore.py"]
-  #   command: ["--help"]  # 默认显示帮助
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - postgres_network
-  #   profiles:
-  #     - restore  # 使用profile，只在需要时启动
 
 networks:
   postgres_network:
