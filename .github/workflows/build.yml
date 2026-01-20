@@ -4,10 +4,26 @@ on:
   schedule:
     - cron: '0 1 1 * *'  # 每月1号凌晨1点
   workflow_dispatch:  # 手动触发
+    inputs:
+      pg_version:
+        description: 'PostgreSQL Major Version'
+        required: true
+        default: '18'
+        type: choice
+        options:
+          - '18'
+          - '17'
+          - '16'
+          - '15'
+          - '14'
+          - '13'
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
+env:
+  DEFAULT_PG_VERSION: '18'
 
 jobs:
   build:
@@ -15,6 +31,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Set PostgreSQL version
+      id: set_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "PG_VERSION=${{ github.event.inputs.pg_version }}" >> $GITHUB_ENV
+        else
+          echo "PG_VERSION=${{ env.DEFAULT_PG_VERSION }}" >> $GITHUB_ENV
+        fi
+        echo "PostgreSQL version: ${{ env.PG_VERSION }}"
 
     - name: Login to Docker Hub
       uses: docker/login-action@v2
@@ -31,6 +57,11 @@ jobs:
         context: .
         push: true
         platforms: linux/amd64,linux/arm64
-        tags: freelabspace/postgresql-backup:latest
+        build-args: |
+          PG_MAJOR_VERSION=${{ env.PG_VERSION }}
+        tags: |
+          freelabspace/postgresql-backup:latest
+          freelabspace/postgresql-backup:pg${{ env.PG_VERSION }}
+          freelabspace/postgresql-backup:pg${{ env.PG_VERSION }}-${{ github.sha }}
         cache-from: type=registry,ref=freelabspace/postgresql-backup:latest
         cache-to: type=inline

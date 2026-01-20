@@ -1,9 +1,13 @@
 FROM python:3.14-slim
 
+# 定义构建参数
+ARG PG_MAJOR_VERSION=18
+
 # 设置环境变量
 ENV TZ=Asia/Shanghai
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=utf-8
+ENV PG_VERSION=${PG_MAJOR_VERSION}
 
 # 设置工作目录
 WORKDIR /app
@@ -22,9 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
-# 更新包列表并安装最新版本的PostgreSQL客户端工具
+# 更新包列表并安装指定版本的PostgreSQL客户端工具
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client-17 \
+    postgresql-client-${PG_MAJOR_VERSION} \
     postgresql-client-common \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \

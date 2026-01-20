@@ -22,7 +22,16 @@ services:
       - postgres_network
 
   pg-backup:
+    # 如果使用预构建镜像
     image: freelabspace/postgresql-backup:latest
+    
+    # 如果需要本地构建，取消下面的注释并注释掉上面的 image
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    #   args:
+    #     PG_MAJOR_VERSION: 18  # 指定 PostgreSQL 客户端版本
+    
     container_name: pg-backup
     environment:
       TZ: Asia/Shanghai
