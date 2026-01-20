@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: freelabspace/postgresql-postgis:17.5
+    image: freelabspace/postgresql-postgis:17.7
     container_name: postgres-postgis
     environment:
       - TZ=Asia/Shanghai
