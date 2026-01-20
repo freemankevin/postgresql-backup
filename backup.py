@@ -10,6 +10,7 @@ import shutil
 from pathlib import Path
 import threading
 import signal
+import re
 
 class BackupManager:
     def __init__(self):
@@ -64,6 +65,84 @@ class BackupManager:
         
         self.logger.info(f"日志系统已初始化，日志文件: {log_file}")
         return self.log_dir
+
+    def get_version(self, command):
+        """获取工具版本号"""
+        try:
+            result = subprocess.run([command, '--version'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                # 提取版本号，如 "pg_dump (PostgreSQL) 18.1"
+                match = re.search(r'(\d+)\.(\d+)', result.stdout)
+                if match:
+                    return int(match.group(1)), int(match.group(2))
+            return None, None
+        except Exception as e:
+            self.logger.warning(f"无法获取 {command} 版本: {e}")
+            return None, None
+
+    def get_server_version(self, host, port, user, password, database):
+        """获取PostgreSQL服务器版本"""
+        try:
+            env = os.environ.copy()
+            env['PGPASSWORD'] = password
+            
+            cmd = [
+                'psql', '-h', host, '-p', port, '-U', user, '-d', database, '-t', '-c',
+                'SHOW server_version;'
+            ]
+            result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0:
+                version_str = result.stdout.strip()
+                match = re.search(r'(\d+)\.(\d+)', version_str)
+                if match:
+                    major = int(match.group(1))
+                    minor = int(match.group(2))
+                    self.logger.info(f"PostgreSQL 服务器版本: {major}.{minor}")
+                    return major, minor
+            return None, None
+        except Exception as e:
+            self.logger.warning(f"无法获取服务器版本: {e}")
+            return None, None
+
+    def check_version_compatibility(self, host, port, user, password, database):
+        """检查pg_dump与服务器版本兼容性"""
+        try:
+            # 获取pg_dump版本
+            dump_major, dump_minor = self.get_version('pg_dump')
+            if dump_major is None:
+                self.logger.error("无法确定 pg_dump 版本")
+                return False
+            
+            # 获取服务器版本
+            server_major, server_minor = self.get_server_version(host, port, user, password, database)
+            if server_major is None:
+                self.logger.warning("无法确定服务器版本，将尝试继续备份")
+                return True
+            
+            self.logger.info(f"版本检查: pg_dump {dump_major}.{dump_minor} vs PostgreSQL Server {server_major}.{server_minor}")
+            
+            # pg_dump 版本应该 >= 服务器版本
+            if dump_major < server_major:
+                self.logger.error(
+                    f"版本不兼容: pg_dump {dump_major}.{dump_minor} 不能备份 PostgreSQL {server_major}.{server_minor} 服务器"
+                )
+                self.logger.error(
+                    f"解决方案: 请升级 Dockerfile 中的 postgresql-client 版本至 postgresql-client-{server_major} 或更高"
+                )
+                return False
+            elif dump_major == server_major and dump_minor < server_minor:
+                self.logger.warning(
+                    f"次版本号较低: pg_dump {dump_major}.{dump_minor} 备份 PostgreSQL {server_major}.{server_minor}，可能会有问题"
+                )
+                return True
+            
+            self.logger.info("版本兼容性检查通过")
+            return True
+            
+        except Exception as e:
+            self.logger.warning(f"版本兼容性检查异常: {e}，将尝试继续备份")
+            return True
 
     def compress_file(self, file_path):
         """压缩文件"""
@@ -182,6 +261,12 @@ class BackupManager:
             if not pg_dump_path:
                 raise Exception('pg_dump命令未找到，请确保PostgreSQL客户端工具已安装')
             self.logger.info(f"使用pg_dump: {pg_dump_path}")
+
+            # 检查版本兼容性（使用第一个数据库进行检查）
+            if databases:
+                if not self.check_version_compatibility(host, port, user, password, databases[0]):
+                    self.logger.error("版本兼容性检查失败，备份任务终止")
+                    return False
 
             # 设置环境变量
             env = os.environ.copy()
