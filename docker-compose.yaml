@@ -1,16 +1,16 @@
 services:
   postgres:
-    image: freelabspace/postgresql-postgis:17.7
-    container_name: postgres-postgis
+    image: "ghcr.io/freemankevin/postgresql-postgis:18.3"
+    container_name: postgres
     environment:
       - TZ=Asia/Shanghai
-      - POSTGRES_DB=dev
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=Postgres@123.com
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - ./data/pgdata:/var/lib/postgresql/data
+      - ./data/pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 30s
@@ -22,29 +22,20 @@ services:
       - postgres_network
 
   pg-backup:
-    # 如果使用预构建镜像
-    image: freelabspace/postgresql-backup:latest
-    
-    # 如果需要本地构建，取消下面的注释并注释掉上面的 image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
-    #   args:
-    #     PG_MAJOR_VERSION: 18  # 指定 PostgreSQL 客户端版本
-    
+    image: ghcr.io/freemankevin/postgresql-backup:latest
     container_name: pg-backup
     environment:
       TZ: Asia/Shanghai
       PG_HOST: postgres
       PG_PORT: 5432
       PG_USER: postgres
-      PG_PASSWORD: postgres
-      PG_DATABASE: dev  # 使用逗号分隔多个数据库
-      BACKUP_RETENTION_DAYS: 7 # 保留7天
-      BACKUP_TIME: "03:00"  # 每天凌晨3点执行，24小时制
-      BACKUP_INTERVAL: daily  # 备份间隔：daily（每天）、hourly（每小时）或数字（每隔多少分钟）
-      ENABLE_COMPRESSION: "true" # 启用压缩
-      BACKUP_FORMAT: "both"  # 备份格式: both（同时生成dump和sql）、dump（仅dump格式）、sql（仅sql格式）
+      PG_PASSWORD: Postgres@123.com
+      PG_DATABASE: postgres
+      BACKUP_RETENTION_DAYS: 7
+      BACKUP_TIME: "03:00"
+      BACKUP_INTERVAL: daily
+      ENABLE_COMPRESSION: "true"
+      BACKUP_FORMAT: "both"
       BACKUP_DIR: /backups
     volumes:
       - ./data/backups:/backups

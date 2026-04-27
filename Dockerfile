@@ -1,33 +1,26 @@
 FROM python:3.14-slim
 
-# 定义构建参数
 ARG PG_MAJOR_VERSION=18
 
-# 设置环境变量
 ENV TZ=Asia/Shanghai
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=utf-8
 ENV PG_VERSION=${PG_MAJOR_VERSION}
 
-# 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖和PostgreSQL官方APT仓库
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
     gnupg \
     lsb-release \
     tzdata \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 添加PostgreSQL官方APT仓库
 RUN mkdir -p /etc/apt/keyrings \
     && wget --quiet -O /etc/apt/keyrings/postgresql.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     && echo "deb [signed-by=/etc/apt/keyrings/postgresql.asc] http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
-# 更新包列表并安装指定版本的PostgreSQL客户端工具
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client-${PG_MAJOR_VERSION} \
     postgresql-client-common \
@@ -36,22 +29,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# 复制依赖文件并安装Python包
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# 创建必要的目录
-RUN mkdir -p /backups /app/scripts
+RUN mkdir -p /backups
 
-# 复制应用文件
-COPY backup.py restore.py ./
+COPY Scripts/backup.py Scripts/restore.py ./
 
-# 设置权限
 RUN chmod +x backup.py restore.py
 
-# 验证PostgreSQL客户端版本
 RUN pg_dump --version && psql --version
 
-# 默认入口点
 ENTRYPOINT ["python3", "backup.py"]
