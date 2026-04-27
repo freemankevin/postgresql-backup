@@ -74,7 +74,8 @@ class RestoreManager:
             
             if format_type == 'custom':
                 if is_compressed:
-                    self.logger.section("流式恢复 (pg_restore)")
+                    self.logger.task("流式恢复 (pg_restore)")
+                    self.logger.subtask(f"执行: gzip -d -c {Path(backup_file).name} | pg_restore -d {database}")
                     
                     decompress_proc = subprocess.Popen(
                         ['gzip', '-d', '-c', backup_file],
@@ -95,8 +96,6 @@ class RestoreManager:
                         restore_cmd.append('--schema-only')
                     
                     restore_cmd.append('--verbose')
-                    
-                    self.logger.info(f"执行: gzip -d -c {backup_file} | pg_restore -d {database}")
                     
                     restore_proc = subprocess.Popen(
                         restore_cmd,
@@ -129,7 +128,8 @@ class RestoreManager:
                     self.logger.success("恢复完成（忽略已存在对象警告）")
                     return True
                 else:
-                    self.logger.section("文件恢复 (pg_restore)")
+                    self.logger.task("文件恢复 (pg_restore)")
+                    self.logger.subtask(f"执行: pg_restore -d {database} {Path(backup_file).name}")
                     
                     cmd = ['pg_restore']
                     cmd.extend(['-h', self.config.PG_HOST])
@@ -145,8 +145,6 @@ class RestoreManager:
                         cmd.append('--schema-only')
                     
                     cmd.extend(['--verbose', backup_file])
-                    
-                    self.logger.info(f"执行: pg_restore -d {database} {backup_file}")
                     
                     result = subprocess.run(
                         cmd, env=env, capture_output=True, text=True,
@@ -172,7 +170,8 @@ class RestoreManager:
             
             elif format_type == 'plain':
                 if is_compressed:
-                    self.logger.section("流式恢复 (psql)")
+                    self.logger.task("流式恢复 (psql)")
+                    self.logger.subtask(f"执行: gzip -d -c {Path(backup_file).name} | psql -d {database}")
                     
                     decompress_proc = subprocess.Popen(
                         ['gzip', '-d', '-c', backup_file],
@@ -184,8 +183,6 @@ class RestoreManager:
                     restore_cmd.extend(['-p', self.config.PG_PORT])
                     restore_cmd.extend(['-U', self.config.PG_USER])
                     restore_cmd.extend(['-d', database])
-                    
-                    self.logger.info(f"执行: gzip -d -c {backup_file} | psql -d {database}")
                     
                     restore_proc = subprocess.Popen(
                         restore_cmd,
@@ -207,7 +204,8 @@ class RestoreManager:
                     self.logger.warning(f"恢复完成: {stderr_text}")
                     return True
                 else:
-                    self.logger.section("文件恢复 (psql)")
+                    self.logger.task("文件恢复 (psql)")
+                    self.logger.subtask(f"执行: psql -d {database} -f {Path(backup_file).name}")
                     
                     cmd = ['psql']
                     cmd.extend(['-h', self.config.PG_HOST])
@@ -215,8 +213,6 @@ class RestoreManager:
                     cmd.extend(['-U', self.config.PG_USER])
                     cmd.extend(['-d', database])
                     cmd.extend(['-f', backup_file])
-                    
-                    self.logger.info(f"执行: psql -d {database} -f {backup_file}")
                     
                     result = subprocess.run(
                         cmd, env=env, capture_output=True, text=True,
@@ -243,7 +239,7 @@ class RestoreManager:
         try:
             env = self.config.get_pg_env()
             
-            self.logger.section("验证恢复数据")
+            self.logger.task("验证恢复数据")
             
             cmd_tables = [
                 'psql', '-h', self.config.PG_HOST, '-p', self.config.PG_PORT,
@@ -253,7 +249,7 @@ class RestoreManager:
             ]
             result = subprocess.run(cmd_tables, env=env, capture_output=True, text=True, timeout=30)
             table_count = int(result.stdout.strip()) if result.returncode == 0 and result.stdout.strip() else 0
-            self.logger.info(f"用户表数量: {table_count}")
+            self.logger.subtask(f"用户表数量: {table_count}")
             
             cmd_sequences = [
                 'psql', '-h', self.config.PG_HOST, '-p', self.config.PG_PORT,
@@ -263,7 +259,7 @@ class RestoreManager:
             ]
             result = subprocess.run(cmd_sequences, env=env, capture_output=True, text=True, timeout=30)
             seq_count = int(result.stdout.strip()) if result.returncode == 0 and result.stdout.strip() else 0
-            self.logger.info(f"用户序列数量: {seq_count}")
+            self.logger.subtask(f"用户序列数量: {seq_count}")
             
             cmd_rows = [
                 'psql', '-h', self.config.PG_HOST, '-p', self.config.PG_PORT,
@@ -272,7 +268,7 @@ class RestoreManager:
             ]
             result = subprocess.run(cmd_rows, env=env, capture_output=True, text=True, timeout=60)
             row_count = result.stdout.strip() if result.returncode == 0 else '未知'
-            self.logger.info(f"总记录数估算: {row_count}")
+            self.logger.subtask(f"总记录数估算: {row_count}")
             
             if table_count > 0:
                 self.logger.success("数据验证成功")
@@ -293,10 +289,10 @@ class RestoreManager:
         
         database = target_database or self.config.PG_DATABASE
         
-        self.logger.header("  恢复任务开始")
-        self.logger.info(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        self.logger.info(f"备份文件: {backup_file}")
-        self.logger.info(f"目标数据库: {database}")
+        self.logger.header("恢复任务开始")
+        self.logger.task(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.logger.task(f"备份文件: {Path(backup_file).name}")
+        self.logger.task(f"目标数据库: {database}")
         
         if not self.conn.create_database(database):
             self.logger.error("无法创建目标数据库")
@@ -331,7 +327,8 @@ class RestoreManager:
     def list_backups(self, backup_dir: str = None) -> list:
         backup_dir = backup_dir or self.config.BACKUP_DIR
         
-        self.logger.section(f"扫描备份目录: {backup_dir}")
+        self.logger.section(f"扫描备份目录")
+        self.logger.subtask(f"目录: {backup_dir}")
         
         if not Path(backup_dir).exists():
             self.logger.error(f"目录不存在: {backup_dir}")
@@ -363,7 +360,7 @@ class RestoreManager:
             self.logger.print_list(
                 f"找到 {len(backup_files)} 个备份文件",
                 backup_files[:10],
-                lambda i, b: f"  {i}. {b['name']} "
+                lambda i, b: f"    {i}. {b['name']} "
                             f"({b['size']} bytes, "
                             f"checksum: {'✓' if b['checksum'] else '✗'}, "
                             f"{b['date'].strftime('%Y-%m-%d %H:%M:%S')})"

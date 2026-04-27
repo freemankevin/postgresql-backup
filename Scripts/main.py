@@ -33,7 +33,7 @@ def cmd_backup(args):
     manager = get_backup_manager(config)
     
     if args.once:
-        logger.header("  单次备份模式")
+        logger.header("单次备份模式")
         success = manager.run_backup(verify=args.verify, parallel=args.parallel)
         sys.exit(0 if success else 1)
     else:

@@ -27,7 +27,7 @@ class Config:
     
     CONNECTION_RETRIES: int = 5
     CONNECTION_RETRY_DELAY: int = 5
-    STARTUP_MAX_WAIT: int = 60
+    STARTUP_MAX_WAIT: int = 180
     
     BACKUP_TIMEOUT: int = 3600
     RESTORE_TIMEOUT: int = 7200
@@ -115,6 +115,7 @@ class Config:
             '备份时间': self.BACKUP_TIME,
             '备份间隔': self.BACKUP_INTERVAL,
             '连接重试': self.CONNECTION_RETRIES,
+            '启动等待': f"{self.STARTUP_MAX_WAIT}s",
         }
         
         logger.print_summary("运行配置", items)

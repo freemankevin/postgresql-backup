@@ -76,7 +76,7 @@ class BackupManager:
             'error': None
         }
         
-        self.logger.section(f"备份数据库: {database}")
+        self.logger.task(f"备份数据库: {database}")
         
         if not self.conn.test_connection(database):
             result['error'] = '连接失败'
@@ -89,7 +89,7 @@ class BackupManager:
         try:
             if self.config.BACKUP_FORMAT in ['both', 'dump']:
                 dump_file = Path(backup_dir) / f'{database}_{timestamp}.dump'
-                self.logger.info(f"创建 dump 备份: {dump_file}")
+                self.logger.subtask(f"创建 dump 备份")
                 
                 cmd = [
                     pg_dump_path, '-h', self.config.PG_HOST, '-p', self.config.PG_PORT,
@@ -118,7 +118,7 @@ class BackupManager:
             
             if self.config.BACKUP_FORMAT in ['both', 'sql']:
                 sql_file = Path(backup_dir) / f'{database}_{timestamp}.sql'
-                self.logger.info(f"创建 SQL 备份: {sql_file}")
+                self.logger.subtask(f"创建 SQL 备份")
                 
                 cmd = [
                     pg_dump_path, '-h', self.config.PG_HOST, '-p', self.config.PG_PORT,
@@ -159,7 +159,8 @@ class BackupManager:
     
     def verify_backup(self, backup_file: str, database: str) -> bool:
         try:
-            self.logger.section(f"验证备份: {backup_file}")
+            self.logger.task(f"验证备份文件")
+            self.logger.subtask(f"文件: {backup_file}")
             
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             verify_db = f'_verify_{timestamp}'
@@ -234,7 +235,7 @@ class BackupManager:
             return False
     
     def cleanup_old_files(self, retention_days: int):
-        self.logger.section("清理过期文件")
+        self.logger.task("清理过期文件")
         
         cutoff_time = time.time() - (retention_days * 86400)
         
@@ -254,7 +255,7 @@ class BackupManager:
                             file_path.unlink()
                             deleted_count += 1
                             deleted_size += file_size
-                            self.logger.info(f"删除: {file_path.name}")
+                            self.logger.subtask(f"删除: {file_path.name}")
                     except Exception as e:
                         self.logger.warning(f"删除失败: {file_path} - {e}")
             
@@ -276,8 +277,8 @@ class BackupManager:
     def run_backup(self, verify: bool = False, parallel: bool = False) -> bool:
         start_time = datetime.now()
         
-        self.logger.header("  备份任务开始")
-        self.logger.info(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.logger.header("备份任务开始")
+        self.logger.task(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         
         self.config.print_config(self.logger)
         
@@ -305,7 +306,7 @@ class BackupManager:
         enable_parallel = parallel or self.config.ENABLE_PARALLEL
         
         if enable_parallel and len(databases) > 1:
-            self.logger.info(f"启用并发备份 (并发数: {self.config.BACKUP_PARALLEL_WORKERS})")
+            self.logger.task(f"启用并发备份 (并发数: {self.config.BACKUP_PARALLEL_WORKERS})")
             
             with ThreadPoolExecutor(max_workers=self.config.BACKUP_PARALLEL_WORKERS) as executor:
                 futures = {
@@ -381,9 +382,9 @@ class BackupManager:
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGINT, self.signal_handler)
         
-        self.logger.header("  PostgreSQL 备份服务启动")
-        self.logger.info(f"备份时间: {self.config.BACKUP_TIME}")
-        self.logger.info(f"备份间隔: {self.config.BACKUP_INTERVAL}")
+        self.logger.header("PostgreSQL 备份服务启动")
+        self.logger.task(f"备份时间: {self.config.BACKUP_TIME}")
+        self.logger.task(f"备份间隔: {self.config.BACKUP_INTERVAL}")
         
         if self.config.BACKUP_INTERVAL == 'daily':
             schedule.every().day.at(self.config.BACKUP_TIME).do(self.run_backup)

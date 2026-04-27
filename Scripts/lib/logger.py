@@ -186,13 +186,21 @@ class Logger:
         self._log('SUCCESS', message)
     
     def header(self, message: str):
-        separator = "─" * 60
-        self.info(separator)
-        self.info(message)
-        self.info(separator)
+        self.info("")
+        self.info("═" * 60)
+        self.info(f"  {message}")
+        self.info("═" * 60)
+        self.info("")
     
     def section(self, title: str):
-        self.info(f"\n{'─' * 20} {title} {'─' * 20}")
+        self.info("")
+        self.info(f"─── {title} ───")
+    
+    def task(self, task_name: str):
+        self.info(f"▶ {task_name}")
+    
+    def subtask(self, subtask_name: str):
+        self.info(f"  • {subtask_name}")
     
     def flush(self):
         if self.file_handler:
@@ -201,19 +209,18 @@ class Logger:
             self.console_handler.flush()
     
     def print_summary(self, title: str, items: dict):
-        self.header(f"  {title}")
+        self.section(title)
         max_key_len = max(len(k) for k in items.keys())
         for key, value in items.items():
-            self.info(f"  {key:<{max_key_len}} : {value}")
-        self.info("─" * 60)
+            self.info(f"    {key:<{max_key_len}} : {value}")
     
     def print_list(self, title: str, items: list, formatter=None):
-        self.info(f"\n{title}:")
+        self.section(title)
         for i, item in enumerate(items, 1):
             if formatter:
                 line = formatter(i, item)
             else:
-                line = f"  {i}. {item}"
+                line = f"    {i}. {item}"
             self.info(line)
 
 

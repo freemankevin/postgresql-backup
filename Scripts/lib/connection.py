@@ -71,20 +71,29 @@ class ConnectionManager:
         ]
         
         start_time = time.time()
+        attempt = 0
+        
         while time.time() - start_time < max_wait:
+            attempt += 1
+            elapsed = int(time.time() - start_time)
+            
             try:
                 result = subprocess.run(
                     cmd, env=env, capture_output=True, text=True, timeout=10
                 )
                 if result.returncode == 0:
-                    wait_time = int(time.time() - start_time)
-                    self.logger.success(f"数据库 {database} 已就绪 (等待 {wait_time} 秒)")
+                    self.logger.success(f"数据库 {database} 已就绪 (等待 {elapsed} 秒，尝试 {attempt} 次)")
                     return True
-            except:
-                pass
-            time.sleep(2)
+                else:
+                    self.logger.subtask(f"连接尝试 {attempt} 失败，继续等待... ({elapsed}s/{max_wait}s)")
+            except subprocess.TimeoutExpired:
+                self.logger.subtask(f"连接尝试 {attempt} 超时，继续等待... ({elapsed}s/{max_wait}s)")
+            except Exception as e:
+                self.logger.subtask(f"连接尝试 {attempt} 异常: {e}，继续等待... ({elapsed}s/{max_wait}s)")
+            
+            time.sleep(5)
         
-        self.logger.error(f"数据库 {database} 在 {max_wait} 秒内未能就绪")
+        self.logger.error(f"数据库 {database} 在 {max_wait} 秒内未能就绪 (尝试 {attempt} 次)")
         return False
     
     def get_server_version(self, database: str) -> Optional[Tuple[int, int]]:
