@@ -115,11 +115,18 @@ class RestoreManager:
                         return True
                     
                     stderr_text = stderr.decode('utf-8', errors='ignore')
-                    if 'ERROR' in stderr_text:
+                    
+                    has_fatal_error = False
+                    for line in stderr_text.split('\n'):
+                        if 'ERROR:' in line and 'already exists' not in line.lower():
+                            has_fatal_error = True
+                            break
+                    
+                    if has_fatal_error:
                         self.logger.error(f"恢复失败: {stderr_text}")
                         return False
                     
-                    self.logger.warning(f"恢复完成（有警告）: {stderr_text}")
+                    self.logger.success("恢复完成（忽略已存在对象警告）")
                     return True
                 else:
                     self.logger.section("文件恢复 (pg_restore)")
@@ -150,11 +157,17 @@ class RestoreManager:
                         self.logger.success("恢复成功")
                         return True
                     
-                    if 'ERROR' in result.stderr:
+                    has_fatal_error = False
+                    for line in result.stderr.split('\n'):
+                        if 'ERROR:' in line and 'already exists' not in line.lower():
+                            has_fatal_error = True
+                            break
+                    
+                    if has_fatal_error:
                         self.logger.error(f"恢复失败: {result.stderr}")
                         return False
                     
-                    self.logger.warning(f"恢复完成（有警告）: {result.stderr}")
+                    self.logger.success("恢复完成（忽略已存在对象警告）")
                     return True
             
             elif format_type == 'plain':
