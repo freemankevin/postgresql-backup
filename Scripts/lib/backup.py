@@ -358,7 +358,7 @@ class BackupManager:
         
         if backup_files:
             self.logger.print_list("备份文件列表", backup_files, 
-                lambda i, f: f"  {i}. {Path(f).name} ({os.path.getsize(f)} bytes)")
+                lambda i, f: f"    {i}. {Path(f).name} ({os.path.getsize(f)} bytes)")
         
         for result in results:
             if not result['success']:

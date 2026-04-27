@@ -98,8 +98,6 @@ class Config:
         return datetime.now().strftime('%Y%m%d_%H%M%S')
     
     def print_config(self, logger):
-        logger.section("配置信息")
-        
         items = {
             'PostgreSQL 主机': f"{self.PG_HOST}:{self.PG_PORT}",
             'PostgreSQL 用户': self.PG_USER,
@@ -118,7 +116,7 @@ class Config:
             '启动等待': f"{self.STARTUP_MAX_WAIT}s",
         }
         
-        logger.print_summary("运行配置", items)
+        logger.print_summary("配置信息", items)
 
 
 def get_config() -> Config:

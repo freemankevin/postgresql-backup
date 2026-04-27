@@ -117,9 +117,16 @@ class RestoreManager:
                     
                     has_fatal_error = False
                     for line in stderr_text.split('\n'):
-                        if 'ERROR:' in line and 'already exists' not in line.lower():
-                            has_fatal_error = True
-                            break
+                        if 'ERROR:' in line:
+                            ignore_patterns = [
+                                'already exists',
+                                'duplicate key',
+                                'multiple primary keys',
+                            ]
+                            should_ignore = any(p in line.lower() for p in ignore_patterns)
+                            if not should_ignore:
+                                has_fatal_error = True
+                                break
                     
                     if has_fatal_error:
                         self.logger.error(f"恢复失败: {stderr_text}")
@@ -157,9 +164,16 @@ class RestoreManager:
                     
                     has_fatal_error = False
                     for line in result.stderr.split('\n'):
-                        if 'ERROR:' in line and 'already exists' not in line.lower():
-                            has_fatal_error = True
-                            break
+                        if 'ERROR:' in line:
+                            ignore_patterns = [
+                                'already exists',
+                                'duplicate key',
+                                'multiple primary keys',
+                            ]
+                            should_ignore = any(p in line.lower() for p in ignore_patterns)
+                            if not should_ignore:
+                                has_fatal_error = True
+                                break
                     
                     if has_fatal_error:
                         self.logger.error(f"恢复失败: {result.stderr}")
