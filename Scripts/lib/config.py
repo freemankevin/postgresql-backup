@@ -1,4 +1,5 @@
 import os
+import multiprocessing
 from typing import List, Optional
 from pathlib import Path
 
@@ -15,16 +16,16 @@ class Config:
     BACKUP_INTERVAL: str = 'daily'
     BACKUP_RETENTION_DAYS: int = 7
     BACKUP_FORMAT: str = 'both'
-    BACKUP_PARALLEL_WORKERS: int = 2
+    BACKUP_PARALLEL_WORKERS: int = None
     
     ENABLE_COMPRESSION: bool = True
-    ENABLE_VERIFY: bool = False
-    ENABLE_PARALLEL: bool = False
+    ENABLE_VERIFY: bool = True
+    ENABLE_PARALLEL: bool = True
     
     RESTORE_VERIFY_CHECKSUM: bool = True
     RESTORE_VERIFY_DATA: bool = False
     
-    CONNECTION_RETRIES: int = 3
+    CONNECTION_RETRIES: int = 5
     CONNECTION_RETRY_DELAY: int = 5
     STARTUP_MAX_WAIT: int = 60
     
@@ -46,11 +47,16 @@ class Config:
         self.BACKUP_INTERVAL = os.environ.get('BACKUP_INTERVAL', self.BACKUP_INTERVAL)
         self.BACKUP_RETENTION_DAYS = int(os.environ.get('BACKUP_RETENTION_DAYS', str(self.BACKUP_RETENTION_DAYS)))
         self.BACKUP_FORMAT = os.environ.get('BACKUP_FORMAT', self.BACKUP_FORMAT)
-        self.BACKUP_PARALLEL_WORKERS = int(os.environ.get('BACKUP_PARALLEL_WORKERS', str(self.BACKUP_PARALLEL_WORKERS)))
+        
+        env_workers = os.environ.get('BACKUP_PARALLEL_WORKERS')
+        if env_workers:
+            self.BACKUP_PARALLEL_WORKERS = int(env_workers)
+        else:
+            self.BACKUP_PARALLEL_WORKERS = multiprocessing.cpu_count()
         
         self.ENABLE_COMPRESSION = os.environ.get('ENABLE_COMPRESSION', 'true').lower() == 'true'
-        self.ENABLE_VERIFY = os.environ.get('ENABLE_VERIFY', 'false').lower() == 'true'
-        self.ENABLE_PARALLEL = os.environ.get('ENABLE_PARALLEL', 'false').lower() == 'true'
+        self.ENABLE_VERIFY = os.environ.get('ENABLE_VERIFY', 'true').lower() == 'true'
+        self.ENABLE_PARALLEL = os.environ.get('ENABLE_PARALLEL', 'true').lower() == 'true'
         
         self.RESTORE_VERIFY_CHECKSUM = os.environ.get('RESTORE_VERIFY_CHECKSUM', 'true').lower() == 'true'
         self.RESTORE_VERIFY_DATA = os.environ.get('RESTORE_VERIFY_DATA', 'false').lower() == 'true'
@@ -103,11 +109,12 @@ class Config:
             '备份格式': self.BACKUP_FORMAT,
             '压缩': '启用' if self.ENABLE_COMPRESSION else '禁用',
             '并行备份': '启用' if self.ENABLE_PARALLEL else '禁用',
-            '并行数': self.BACKUP_PARALLEL_WORKERS,
+            '并发数': f"{self.BACKUP_PARALLEL_WORKERS} (CPU核心)",
             '备份验证': '启用' if self.ENABLE_VERIFY else '禁用',
             '保留天数': self.BACKUP_RETENTION_DAYS,
             '备份时间': self.BACKUP_TIME,
             '备份间隔': self.BACKUP_INTERVAL,
+            '连接重试': self.CONNECTION_RETRIES,
         }
         
         logger.print_summary("运行配置", items)

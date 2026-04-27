@@ -31,10 +31,10 @@ docker-compose up -d --build
 | BACKUP_RETENTION_DAYS | 7 | 备份文件保留天数 |
 | ENABLE_COMPRESSION | true | 是否启用压缩 |
 | BACKUP_FORMAT | both | 备份格式（both/dump/sql） |
-| ENABLE_PARALLEL | false | 是否启用并发备份（多数据库） |
-| BACKUP_PARALLEL_WORKERS | 2 | 并发备份线程数 |
-| ENABLE_VERIFY | false | 是否验证备份文件可用性 |
-| CONNECTION_RETRIES | 3 | 连接失败重试次数 |
+| BACKUP_PARALLEL_WORKERS | CPU核心数 | 并发备份线程数（默认等于CPU可用核心数） |
+| ENABLE_VERIFY | true | 是否验证备份文件可用性 |
+| CONNECTION_RETRIES | 5 | 连接失败重试次数 |
+| ENABLE_PARALLEL | true | 是否启用并发备份（多数据库） |
 | STARTUP_MAX_WAIT | 60 | 启动时等待数据库就绪秒数 |
 
 
