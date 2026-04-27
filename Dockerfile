@@ -35,10 +35,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 RUN mkdir -p /backups
 
-COPY Scripts/backup.py Scripts/restore.py ./
+COPY Scripts/lib ./lib
+COPY Scripts/main.py ./
 
-RUN chmod +x backup.py restore.py
+RUN chmod +x main.py
 
 RUN pg_dump --version && psql --version
 
-ENTRYPOINT ["python3", "backup.py"]
+ENTRYPOINT ["python3", "main.py", "backup"]

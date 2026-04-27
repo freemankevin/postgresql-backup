@@ -26,6 +26,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# 但保留 Scripts/lib 目录（项目自定义模块）
+!Scripts/lib/
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
