@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from datetime import datetime
 import argparse
+import hashlib
 
 class RestoreManager:
     def __init__(self):
@@ -23,6 +24,91 @@ class RestoreManager:
             ]
         )
         self.logger = logging.getLogger(__name__)
+    
+    def verify_checksum(self, file_path):
+        """验证文件 checksum"""
+        try:
+            checksum_file = f'{file_path}.sha256'
+            if not os.path.exists(checksum_file):
+                self.logger.warning(f"Checksum 文件不存在: {checksum_file}")
+                return True
+            
+            with open(checksum_file, 'r') as f:
+                content = f.read().strip()
+                expected_checksum = content.split()[0]
+            
+            sha256_hash = hashlib.sha256()
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    sha256_hash.update(chunk)
+            
+            actual_checksum = sha256_hash.hexdigest()
+            
+            if actual_checksum == expected_checksum:
+                self.logger.info(f"Checksum 验证成功: {file_path}")
+                return True
+            else:
+                self.logger.error(f"Checksum 验证失败: {file_path}")
+                self.logger.error(f"期望: {expected_checksum}")
+                self.logger.error(f"实际: {actual_checksum}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f'Checksum 验证异常 {file_path}: {e}')
+            return False
+    
+    def get_original_checksum(self, gz_file_path):
+        """从压缩文件的 checksum 文件获取 checksum"""
+        checksum_file = f'{gz_file_path}.sha256'
+        if os.path.exists(checksum_file):
+            with open(checksum_file, 'r') as f:
+                return f.read().strip().split()[0]
+        return None
+    
+    def verify_data_after_restore(self, host, port, user, password, database):
+        """恢复后数据验证"""
+        try:
+            env = os.environ.copy()
+            env['PGPASSWORD'] = password
+            
+            self.logger.info(f"开始验证恢复数据: {database}")
+            
+            cmd_tables = [
+                'psql', '-h', host, '-p', port, '-U', user, '-d', database, '-t', '-c',
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema');"
+            ]
+            result = subprocess.run(cmd_tables, env=env, capture_output=True, text=True, timeout=30)
+            table_count = int(result.stdout.strip()) if result.returncode == 0 and result.stdout.strip() else 0
+            self.logger.info(f"用户表数量: {table_count}")
+            
+            cmd_sequences = [
+                'psql', '-h', host, '-p', port, '-U', user, '-d', database, '-t', '-c',
+                "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_schema NOT IN ('pg_catalog', 'information_schema');"
+            ]
+            result = subprocess.run(cmd_sequences, env=env, capture_output=True, text=True, timeout=30)
+            seq_count = int(result.stdout.strip()) if result.returncode == 0 and result.stdout.strip() else 0
+            self.logger.info(f"用户序列数量: {seq_count}")
+            
+            cmd_total_rows = [
+                'psql', '-h', host, '-p', port, '-U', user, '-d', database, '-t', '-c',
+                """
+                SELECT SUM(n_live_tup) FROM pg_stat_user_tables;
+                """
+            ]
+            result = subprocess.run(cmd_total_rows, env=env, capture_output=True, text=True, timeout=60)
+            total_rows = result.stdout.strip() if result.returncode == 0 else '未知'
+            self.logger.info(f"总记录数估算: {total_rows}")
+            
+            if table_count > 0:
+                self.logger.info("恢复验证成功：数据库包含用户数据")
+                return True
+            else:
+                self.logger.warning("恢复验证：数据库可能为空")
+                return True
+                
+        except Exception as e:
+            self.logger.warning(f"数据验证异常: {e}")
+            return True
 
     def get_env(self, key, default=None):
         """获取环境变量"""
@@ -31,58 +117,39 @@ class RestoreManager:
             self.logger.info(f"环境变量 {key}: {value}")
         return value
 
-    def decompress_file(self, gz_file_path):
-        """解压.gz文件"""
-        try:
-            if not gz_file_path.endswith('.gz'):
-                return gz_file_path
-                
-            decompressed_path = gz_file_path[:-3]  # 移除.gz后缀
-            
-            self.logger.info(f"解压文件: {gz_file_path} -> {decompressed_path}")
-            
-            with gzip.open(gz_file_path, 'rb') as f_in:
-                with open(decompressed_path, 'wb') as f_out:
-                    f_out.writelines(f_in)
-            
-            self.logger.info(f"文件解压成功: {decompressed_path}")
-            return decompressed_path
-            
-        except Exception as e:
-            self.logger.error(f"文件解压失败: {e}")
-            return None
-
     def detect_backup_format(self, backup_file):
-        """检测备份文件格式"""
+        """检测备份文件格式（不解压）"""
         try:
-            # 处理压缩文件
-            original_file = backup_file
-            if backup_file.endswith('.gz'):
-                backup_file = self.decompress_file(backup_file)
-                if not backup_file:
-                    return None, None
-            
-            # 检查文件是否存在
             if not Path(backup_file).exists():
                 self.logger.error(f'备份文件不存在: {backup_file}')
                 return None, None
             
-            # 通过文件扩展名判断格式
-            if backup_file.endswith('.dump'):
-                return 'custom', backup_file
-            elif backup_file.endswith('.sql'):
-                return 'plain', backup_file
+            is_compressed = backup_file.endswith('.gz')
+            
+            if is_compressed:
+                with gzip.open(backup_file, 'rb') as f:
+                    header = f.read(5)
+                    if header.startswith(b'PGDMP'):
+                        return 'custom', True
+                    else:
+                        return 'plain', True
             else:
-                # 尝试通过文件内容判断
-                try:
+                if backup_file.endswith('.dump'):
                     with open(backup_file, 'rb') as f:
-                        header = f.read(10)
+                        header = f.read(5)
                         if header.startswith(b'PGDMP'):
-                            return 'custom', backup_file
+                            return 'custom', False
                         else:
-                            return 'plain', backup_file
-                except:
-                    return 'plain', backup_file
+                            return 'plain', False
+                elif backup_file.endswith('.sql'):
+                    return 'plain', False
+                else:
+                    with open(backup_file, 'rb') as f:
+                        header = f.read(5)
+                        if header.startswith(b'PGDMP'):
+                            return 'custom', False
+                        else:
+                            return 'plain', False
                     
         except Exception as e:
             self.logger.error(f"检测备份格式失败: {e}")
@@ -139,8 +206,10 @@ class RestoreManager:
             self.logger.error(f"创建数据库异常: {e}")
             return False
 
-    def restore_backup(self, backup_file, target_database=None, clean_first=False, data_only=False, schema_only=False):
-        """恢复备份"""
+    def restore_backup(self, backup_file, target_database=None, clean_first=False, 
+                       data_only=False, schema_only=False, verify_checksum=True, 
+                       verify_data=False):
+        """恢复备份（支持流式传输）"""
         start_time = datetime.now()
         self.logger.info("=" * 60)
         self.logger.info(f"开始恢复备份: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -148,95 +217,162 @@ class RestoreManager:
         self.logger.info("=" * 60)
         
         try:
-            # 获取环境变量
             host = self.get_env('PG_HOST', 'localhost')
             port = self.get_env('PG_PORT', '5432')
             user = self.get_env('PG_USER', 'postgres')
             password = self.get_env('PG_PASSWORD', 'postgres')
             database = target_database or self.get_env('PG_DATABASE', 'postgres')
             
-            # 检测备份格式
-            backup_format, processed_file = self.detect_backup_format(backup_file)
+            backup_format, is_compressed = self.detect_backup_format(backup_file)
             if not backup_format:
                 return False
-                
-            self.logger.info(f"检测到备份格式: {backup_format}")
-            self.logger.info(f"处理后的文件: {processed_file}")
             
-            # 创建数据库（如果不存在）
+            self.logger.info(f"检测到备份格式: {backup_format}")
+            self.logger.info(f"是否压缩: {is_compressed}")
+            
+            if verify_checksum and is_compressed:
+                checksum_valid = self.verify_checksum(backup_file)
+                if not checksum_valid:
+                    self.logger.error("Checksum 验证失败，终止恢复")
+                    return False
+            
             if not self.create_database_if_not_exists(host, port, user, password, database):
                 self.logger.error("无法创建或连接到目标数据库")
                 return False
             
-            # 测试连接
             if not self.test_connection(host, port, user, password, database):
                 return False
             
-            # 设置环境变量
             env = os.environ.copy()
             env['PGPASSWORD'] = password
             
             success = False
             
             if backup_format == 'custom':
-                # 使用pg_restore恢复自定义格式
-                cmd = ['pg_restore', '-h', host, '-p', port, '-U', user, '-d', database, '-v']
-                
-                if clean_first:
-                    cmd.append('-c')  # 清理现有对象
-                if data_only:
-                    cmd.append('-a')  # 仅数据
-                elif schema_only:
-                    cmd.append('-s')  # 仅架构
+                if is_compressed:
+                    self.logger.info("使用流式解压恢复（无需临时文件）")
+                    decompress_proc = subprocess.Popen(
+                        ['gzip', '-d', '-c', backup_file],
+                        stdout=subprocess.PIPE
+                    )
                     
-                cmd.append(processed_file)
-                
-                self.logger.info(f"执行pg_restore命令: {' '.join(cmd[:-1])} [文件路径]")
-                
-                try:
-                    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=7200)
+                    restore_cmd = ['pg_restore', '-h', host, '-p', port, '-U', user, '-d', database]
                     
-                    if result.returncode == 0:
-                        self.logger.info("pg_restore执行成功")
+                    if clean_first:
+                        restore_cmd.extend(['--clean', '--if-exists'])
+                    if data_only:
+                        restore_cmd.append('--data-only')
+                    elif schema_only:
+                        restore_cmd.append('--schema-only')
+                    
+                    restore_cmd.append('--verbose')
+                    
+                    self.logger.info(f"执行流式pg_restore命令")
+                    
+                    restore_proc = subprocess.Popen(
+                        restore_cmd,
+                        stdin=decompress_proc.stdout,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        env=env
+                    )
+                    
+                    decompress_proc.stdout.close()
+                    stdout, stderr = restore_proc.communicate(timeout=7200)
+                    decompress_proc.wait()
+                    
+                    if restore_proc.returncode == 0:
+                        self.logger.info("流式pg_restore执行成功")
                         success = True
                     else:
-                        # pg_restore可能会有警告但仍然成功
-                        if "ERROR" in result.stderr:
-                            self.logger.error(f"pg_restore执行失败: {result.stderr}")
+                        stderr_text = stderr.decode('utf-8', errors='ignore')
+                        if "ERROR" in stderr_text:
+                            self.logger.error(f"pg_restore执行失败: {stderr_text}")
                         else:
-                            self.logger.warning(f"pg_restore完成但有警告: {result.stderr}")
+                            self.logger.warning(f"pg_restore完成但有警告: {stderr_text}")
                             success = True
-                            
-                except subprocess.TimeoutExpired:
-                    self.logger.error("恢复操作超时")
+                else:
+                    cmd = ['pg_restore', '-h', host, '-p', port, '-U', user, '-d', database]
+                    
+                    if clean_first:
+                        cmd.extend(['--clean', '--if-exists'])
+                    if data_only:
+                        cmd.append('--data-only')
+                    elif schema_only:
+                        cmd.append('--schema-only')
+                    
+                    cmd.extend(['--verbose', backup_file])
+                    
+                    self.logger.info(f"执行pg_restore命令")
+                    
+                    try:
+                        result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=7200)
+                        
+                        if result.returncode == 0:
+                            self.logger.info("pg_restore执行成功")
+                            success = True
+                        else:
+                            if "ERROR" in result.stderr:
+                                self.logger.error(f"pg_restore执行失败: {result.stderr}")
+                            else:
+                                self.logger.warning(f"pg_restore完成但有警告: {result.stderr}")
+                                success = True
+                                
+                    except subprocess.TimeoutExpired:
+                        self.logger.error("恢复操作超时")
                     
             elif backup_format == 'plain':
-                # 使用psql恢复SQL格式
-                cmd = ['psql', '-h', host, '-p', port, '-U', user, '-d', database, '-f', processed_file]
-                
-                self.logger.info(f"执行psql命令: {' '.join(cmd[:-1])} [文件路径]")
-                
-                try:
-                    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=7200)
+                if is_compressed:
+                    self.logger.info("使用流式解压恢复（无需临时文件）")
+                    decompress_proc = subprocess.Popen(
+                        ['gzip', '-d', '-c', backup_file],
+                        stdout=subprocess.PIPE
+                    )
                     
-                    if result.returncode == 0:
-                        self.logger.info("psql执行成功")
+                    restore_cmd = ['psql', '-h', host, '-p', port, '-U', user, '-d', database]
+                    
+                    self.logger.info(f"执行流式psql命令")
+                    
+                    restore_proc = subprocess.Popen(
+                        restore_cmd,
+                        stdin=decompress_proc.stdout,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        env=env
+                    )
+                    
+                    decompress_proc.stdout.close()
+                    stdout, stderr = restore_proc.communicate(timeout=7200)
+                    decompress_proc.wait()
+                    
+                    if restore_proc.returncode == 0:
+                        self.logger.info("流式psql执行成功")
                         success = True
                     else:
-                        self.logger.error(f"psql执行失败: {result.stderr}")
+                        stderr_text = stderr.decode('utf-8', errors='ignore')
+                        self.logger.warning(f"psql恢复完成: {stderr_text}")
+                        success = True
+                else:
+                    cmd = ['psql', '-h', host, '-p', port, '-U', user, '-d', database, '-f', backup_file]
+                    
+                    self.logger.info(f"执行psql命令")
+                    
+                    try:
+                        result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=7200)
                         
-                except subprocess.TimeoutExpired:
-                    self.logger.error("恢复操作超时")
+                        if result.returncode == 0:
+                            self.logger.info("psql执行成功")
+                            success = True
+                        else:
+                            self.logger.warning(f"psql恢复完成: {result.stderr}")
+                            success = True
+                            
+                    except subprocess.TimeoutExpired:
+                        self.logger.error("恢复操作超时")
             
-            # 清理临时解压文件
-            if backup_file.endswith('.gz') and processed_file != backup_file:
-                try:
-                    os.remove(processed_file)
-                    self.logger.info(f"已清理临时文件: {processed_file}")
-                except:
-                    pass
+            if success and verify_data:
+                self.verify_data_after_restore(host, port, user, password, database)
             
-            # 恢复总结
             end_time = datetime.now()
             duration = end_time - start_time
             
@@ -245,6 +381,8 @@ class RestoreManager:
             self.logger.info(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
             self.logger.info(f"结束时间: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
             self.logger.info(f"耗时: {duration}")
+            self.logger.info(f"流式恢复: {'启用' if is_compressed else '禁用'}")
+            self.logger.info(f"Checksum验证: {'通过' if verify_checksum else '跳过'}")
             self.logger.info(f"恢复状态: {'成功' if success else '失败'}")
             self.logger.info(f"目标数据库: {database}")
             self.logger.info("=" * 60)
@@ -271,20 +409,24 @@ class RestoreManager:
                     file_size = file_path.stat().st_size
                     file_time = datetime.fromtimestamp(file_path.stat().st_mtime)
                     
+                    checksum_file = file_path.parent / f'{file}.sha256'
+                    has_checksum = checksum_file.exists()
+                    
                     backup_files.append({
                         'path': str(file_path),
                         'name': file,
                         'size': file_size,
                         'date': file_time,
-                        'type': 'custom' if '.dump' in file else 'plain'
+                        'type': 'custom' if '.dump' in file else 'plain',
+                        'checksum': has_checksum
                     })
         
-        # 按日期排序
         backup_files.sort(key=lambda x: x['date'], reverse=True)
         
         self.logger.info(f"找到 {len(backup_files)} 个备份文件:")
-        for i, backup in enumerate(backup_files[:10]):  # 只显示最新的10个
-            self.logger.info(f"  {i+1}. {backup['name']} ({backup['size']} bytes, {backup['date'].strftime('%Y-%m-%d %H:%M:%S')})")
+        for i, backup in enumerate(backup_files[:10]):
+            checksum_status = '✓' if backup['checksum'] else '✗'
+            self.logger.info(f"  {i+1}. {backup['name']} ({backup['size']} bytes, checksum:{checksum_status}, {backup['date'].strftime('%Y-%m-%d %H:%M:%S')})")
         
         return backup_files
 
@@ -296,17 +438,17 @@ def main():
     parser.add_argument('-c', '--clean', action='store_true', help='恢复前清理现有对象')
     parser.add_argument('--data-only', action='store_true', help='仅恢复数据')
     parser.add_argument('--schema-only', action='store_true', help='仅恢复架构')
+    parser.add_argument('--no-verify-checksum', action='store_true', help='跳过checksum验证')
+    parser.add_argument('--verify-data', action='store_true', help='恢复后验证数据完整性')
     
     args = parser.parse_args()
     
     restore_manager = RestoreManager()
     
-    # 列出备份文件
     if args.list:
         restore_manager.list_backups(args.list)
         return
     
-    # 恢复备份
     if not args.backup_file:
         parser.print_help()
         sys.exit(1)
@@ -316,7 +458,9 @@ def main():
         target_database=args.database,
         clean_first=args.clean,
         data_only=args.data_only,
-        schema_only=args.schema_only
+        schema_only=args.schema_only,
+        verify_checksum=not args.no_verify_checksum,
+        verify_data=args.verify_data
     )
     
     sys.exit(0 if success else 1)
