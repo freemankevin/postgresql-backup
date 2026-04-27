@@ -16,7 +16,7 @@ class Config:
     BACKUP_INTERVAL: str = 'daily'
     BACKUP_RETENTION_DAYS: int = 7
     BACKUP_FORMAT: str = 'both'
-    BACKUP_PARALLEL_WORKERS: int = None
+    BACKUP_PARALLEL_WORKERS: int = 0
     
     ENABLE_COMPRESSION: bool = True
     ENABLE_VERIFY: bool = True
@@ -51,7 +51,7 @@ class Config:
         env_workers = os.environ.get('BACKUP_PARALLEL_WORKERS')
         if env_workers:
             self.BACKUP_PARALLEL_WORKERS = int(env_workers)
-        else:
+        elif self.BACKUP_PARALLEL_WORKERS == 0:
             self.BACKUP_PARALLEL_WORKERS = multiprocessing.cpu_count()
         
         self.ENABLE_COMPRESSION = os.environ.get('ENABLE_COMPRESSION', 'true').lower() == 'true'
