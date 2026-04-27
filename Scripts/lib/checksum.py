@@ -109,14 +109,14 @@ class ChecksumManager:
                 self.logger.error(f"压缩文件不存在: {gz_file_path}")
                 return False
             
-            self.logger.info(f"流式验证 checksum: {gz_file_path}")
+            self.logger.info(f"验证 checksum: {gz_file_path}")
             
             with open(checksum_file, 'r') as f:
                 content = f.read().strip()
                 expected = content.split()[0]
             
             sha256_hash = hashlib.sha256()
-            with gzip.open(gz_file_path, 'rb') as f:
+            with open(gz_file_path, 'rb') as f:
                 for chunk in iter(lambda: f.read(8192), b''):
                     sha256_hash.update(chunk)
             
@@ -132,7 +132,7 @@ class ChecksumManager:
             return False
             
         except Exception as e:
-            self.logger.error(f"Checksum 流式验证异常: {e}")
+            self.logger.error(f"Checksum 验证异常: {e}")
             return False
 
 

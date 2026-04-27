@@ -195,7 +195,14 @@ class BackupManager:
                 if backup_file.endswith('.gz') and os.path.exists(actual_file):
                     os.remove(actual_file)
                 
-                if result.returncode == 0 or 'ERROR' not in result.stderr:
+                has_fatal_error = False
+                if result.returncode != 0:
+                    for line in result.stderr.split('\n'):
+                        if 'ERROR:' in line and 'already exists' not in line.lower():
+                            has_fatal_error = True
+                            break
+                
+                if not has_fatal_error:
                     self.logger.success("备份验证成功")
                     
                     cmd_count = [

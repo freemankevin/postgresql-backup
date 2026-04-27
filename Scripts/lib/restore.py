@@ -55,7 +55,7 @@ class RestoreManager:
     
     def restore_streaming(self, backup_file: str, database: str, 
                           clean: bool = False, data_only: bool = False,
-                          schema_only: bool = False) -> bool:
+                          schema_only: bool = False, verify_checksum: bool = True) -> bool:
         try:
             format_type, is_compressed = self.detect_format(backup_file)
             
@@ -65,7 +65,7 @@ class RestoreManager:
             self.logger.info(f"备份格式: {format_type}")
             self.logger.info(f"是否压缩: {is_compressed}")
             
-            if is_compressed and self.config.RESTORE_VERIFY_CHECKSUM:
+            if is_compressed and verify_checksum:
                 if not self.checksum.verify_gz_streaming(backup_file):
                     self.logger.error("Checksum 验证失败，终止恢复")
                     return False
@@ -294,7 +294,7 @@ class RestoreManager:
             return False
         
         success = self.restore_streaming(
-            backup_file, database, clean, data_only, schema_only
+            backup_file, database, clean, data_only, schema_only, verify_checksum
         )
         
         if success and verify_data:
