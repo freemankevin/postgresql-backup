@@ -27,16 +27,9 @@ services:
     environment:
       TZ: Asia/Shanghai
       PG_HOST: postgres
-      PG_PORT: 5432
-      PG_USER: postgres
       PG_PASSWORD: Postgres@123.com
-      PG_DATABASE: postgres
-      BACKUP_RETENTION_DAYS: 7
       BACKUP_TIME: "03:00"
-      BACKUP_INTERVAL: daily
-      ENABLE_COMPRESSION: "true"
-      BACKUP_FORMAT: "both"
-      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: 7
     volumes:
       - ./data/backups:/backups
     depends_on:
